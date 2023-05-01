@@ -1,0 +1,9 @@
+/env/
+/Models/
+/Plots/
+/Results/
+/Data/
+/Code/__Pycache__/
+/Code/.ipynb_checkpoints/
+/Code/*.ipynb
+/.vscode/
