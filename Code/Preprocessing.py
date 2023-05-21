@@ -47,23 +47,29 @@ def split_dataset(data, size):
     test_data = np.take(data, test_indices, axis=0)
     return train_data, test_data
 
-def preprocess_data(data, n_pc, train_split=False, pca=None):
+def preprocess_data(data, seed, n_pc, train_split=False, pca_sc=None, pca=None):#, sc=None):
     
     features = data.drop(columns=["Class"])
     labels = data["Class"]
     
-    # Standard scaling
-    sc = StandardScaler()
-    features = sc.fit_transform(features)
-    
-    # PCA
     if train_split:
-        pca = PCA(n_components=n_pc)
+        # Standard scaling
+        pca_sc = StandardScaler()
+        features = pca_sc.fit_transform(features)
+
+        # PCA
+        pca = PCA(n_components=n_pc, random_state=seed)
         features = pca.fit_transform(features)
+        
+        # Rescaling to zero mean and 1/sqrt(M) variance 
+        #sc = StandardScaler()
+        #features = sc.fit_transform(features) / np.sqrt(n_pc)
     else:
         try:
+            features = pca_sc.transform(features)
             features = pca.transform(features)
+            #features = sc.transform(features) / np.sqrt(n_pc)
         except:
-            print('PCA not available')
+            print('PCA or Scalers not available')
 
-    return features, labels, pca
+    return features, labels, pca_sc, pca#, sc
