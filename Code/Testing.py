@@ -1,5 +1,6 @@
 import time
 import os
+import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_score, recall_score, roc_auc_score, average_precision_score, f1_score
 from Kernel_calculation import retrieve_interim_kernel_calculation_time
@@ -50,9 +51,41 @@ def save_results(kmethod, seed, size, n_pc, avgPrecision, precision, \
     resultFileName += '.csv'
     if not os.path.exists(resultFileName):
         with open(resultFileName, 'w+') as resultFile:
-            header = 'seed, n_pc, avgPrecision, precision, recall, f1_score, auroc, train_time, test_time\n'
+            header = 'seed,n_pc,avgPrecision,precision,recall,f1_score,auroc,train_time,test_time\n'
             resultFile.write(header)
     with open(resultFileName, 'a+') as resultFile:
-        resultFormat = '{0}, {1}, {2:.4f}, {3:.4f}, {4:.4f}, {5:.4f}, {6:.4f}, {7:.4f}, {8:.4f}\n'
+        resultFormat = '{0},{1},{2:.4f},{3:.4f},{4:.4f},{5:.4f},{6:.4f},{7:.4f},{8:.4f}\n'
         resultFile.write(resultFormat.format(seed, n_pc, avgPrecision, precision, \
                                              recall, f1_score, auroc, train_time, test_time))
+        
+def check_tested(kmethod, seed, size, n_pc, qIT_shots=None, \
+                qRM_shots=None, qRM_settings=None, n_subsamples=None):
+    '''
+    Checks if model was already trained and tested.
+    '''
+    resultsFolderName = f'{ROOT_DIR}/Results/'
+    kmethodFolderName = resultsFolderName + f'{kmethod}/'
+    resultFileName = kmethodFolderName + f'dsize_{size}'
+    if kmethod == 'qIT':
+        resultFileName += f'_n_shots_{qIT_shots}'
+    elif kmethod == 'qRM':
+        resultFileName += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    elif kmethod == 'qVS':
+            resultFileName += f'_n_subsamples_{n_subsamples}'
+    else:
+        #TODO: add handling for hyperparameters of qDISC and qBBF
+        pass
+    resultFileName += '.csv'
+    if not os.path.exists(resultFileName):
+        return False
+    for _ in range(20):
+        try:
+            result_df = pd.read_csv(resultFileName, on_bad_lines='warn')
+        except (KeyError, pd.errors.EmptyDataError):
+            time.sleep(np.random.uniform(0,30))
+            continue
+        break
+    if result_df[(result_df.seed==seed) & (result_df.n_pc==n_pc)].empty:
+        return False
+    else:
+        return True

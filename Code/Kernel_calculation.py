@@ -5,6 +5,9 @@ import pandas as pd
 from tqdm import tqdm, trange
 from itertools import product, chain
 
+# from functools import partialmethod
+# tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+
 from qiskit import QuantumRegister, QuantumCircuit, ClassicalRegister, transpile
 from qiskit.providers.aer import QasmSimulator
 from qiskit.quantum_info import random_unitary
@@ -16,10 +19,10 @@ def quantum_feature(x, reuploads):
     Returns a IQP like circuit with the specified number of reuploads
     '''
     n_pc = len(x)
+    qr = QuantumRegister(n_pc)
+    cr = ClassicalRegister(n_pc)
+    qc = QuantumCircuit(qr, cr)
     for r in range(2*reuploads):
-        qr = QuantumRegister(n_pc)
-        cr = ClassicalRegister(n_pc)
-        qc = QuantumCircuit(qr, cr)
         qc.h(range(n_pc))
         qc.barrier()
         for i in range(n_pc):
@@ -27,7 +30,7 @@ def quantum_feature(x, reuploads):
         qc.barrier()
         for i in range(n_pc):
             for j in range(i+1, n_pc):
-                qc.rzz(2*x[i]*x[j], i, j)
+                qc.rzz(x[i]*x[j], i, j)
         qc.barrier()
     return qc
                 
@@ -95,6 +98,7 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
                 save_interim_kernel_calculation_time(end_t-start_t, False, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
         else:
             continue
+    save_interim_kernel_copy(gram_matrix, 'qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
     save_interim_kernel_calculation_time(0, True, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
     return gram_matrix
 
@@ -401,50 +405,53 @@ def get_saved_qRM_settings(seed, n_pc, qRM_settings):
     # If the path does not exist, we return None
     return None
 
-def save_interim_kernel_calculation_time(time, complete, kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
+def save_interim_kernel_calculation_time(calc_time, complete, kmethod, size, split, seed,\
+                n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
     '''
     Saves the time it took to calculate the interim kernel copy
     '''
     interimResultsFolder = f'./InterimResults/{kmethod}/{split}/'
     if not os.path.exists(interimResultsFolder):
         os.makedirs(interimResultsFolder)
-    KernelCalcTimeFile = interimResultsFolder + f'kernel_calculation_times_dsize_{size}'
+    KernelCalcTimeFile = interimResultsFolder
+    KernelCalcTimeFile += f'kernel_calculation_times_dsize_{size}'
+    KernelCalcTimeFile += f'_seed_{seed}_n_pc_{n_pc}'
     if kmethod=='qIT':
         KernelCalcTimeFile += f'_n_shots_{qIT_shots}'
     elif kmethod=='qRM':
         KernelCalcTimeFile += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
-    KernelCalcTimeFile += '.csv'
+    KernelCalcTimeFile += '.npy'
     if not os.path.exists(KernelCalcTimeFile):
-        time_df = pd.DataFrame(columns=['seed', 'n_pc', 'split', 'complete', 'time'])
-        time_df.loc[0] = {'seed':seed, 'n_pc':n_pc, 'split':split, 'complete':complete, 'time':time}
+        time_array = np.array([calc_time, complete])
+        np.save(KernelCalcTimeFile, time_array)
     else:
-        time_df = pd.read_csv(KernelCalcTimeFile, index_col=0)
-        if time_df[(time_df['seed']==seed) & (time_df['n_pc']==n_pc)].empty:
-            time_df.loc[time_df.shape[0]] = {'seed':seed, 'n_pc':n_pc, 'split':split, 'complete':complete, 'time':time}
-        elif time_df.loc[(time_df['seed']==seed) & (time_df['n_pc']==n_pc),'complete'].bool() == False:
-            time_df.loc[(time_df['seed']==seed) & (time_df['n_pc']==n_pc),'time'] += time
-            time_df.loc[(time_df['seed']==seed) & (time_df['n_pc']==n_pc),'complete'] = complete
-    time_df.to_csv(KernelCalcTimeFile)
+        time_array = np.load(KernelCalcTimeFile)
+        if time_array.size == 0:
+            time_array = np.array([calc_time, complete])
+        elif time_array[1] == False:
+            time_array[0] += calc_time
+            time_array[1] = complete
+        np.save(KernelCalcTimeFile, time_array)
 
 def retrieve_interim_kernel_calculation_time(kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
     '''
     Returns the time it took previously to calculate the interim kernel copy if there was a previous calculation, otherwise it returns 0
     '''
     interimResultsFolder = f'./InterimResults/{kmethod}/{split}/'
-    KernelCalcTimeFile = interimResultsFolder + f'kernel_calculation_times_dsize_{size}'
+    if not os.path.exists(interimResultsFolder):
+        return 0
+    KernelCalcTimeFile = interimResultsFolder
+    KernelCalcTimeFile += f'kernel_calculation_times_dsize_{size}'
+    KernelCalcTimeFile += f'_seed_{seed}_n_pc_{n_pc}'
     if kmethod=='qIT':
         KernelCalcTimeFile += f'_n_shots_{qIT_shots}'
     elif kmethod=='qRM':
         KernelCalcTimeFile += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
-    else: # TODO: Add handling for qVS, qDISC and qBFF
-        pass
-    KernelCalcTimeFile += '.csv'
-    # If the file does not exit or there are no times saves for the seed and n_pc, return 0 else return time
+    KernelCalcTimeFile += '.npy'
     if not os.path.exists(KernelCalcTimeFile):
         return 0
-    time_df = pd.read_csv(KernelCalcTimeFile, index_col=0)
-    if time_df.loc[(time_df['seed']==seed) & (time_df['n_pc']==n_pc), 'time'].empty:
-        return 0
-    previous_calculation_time = time_df.loc[(time_df['seed']==seed) & (time_df['n_pc']==n_pc), 'time'].iloc[0]
-    return previous_calculation_time
-                
+    else:
+        time_array = np.load(KernelCalcTimeFile)
+        if time_array.size == 0:
+            return 0
+        return time_array[0]

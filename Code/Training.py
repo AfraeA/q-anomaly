@@ -13,15 +13,15 @@ def train_model(X_train, y_train, seed, kmethod, qIT_shots, qRM_shots, qRM_setti
     if kmethod == 'cRBF':
         ocsvm = OneClassSVM(gamma='scale', nu=0.1, cache_size=2000)
     elif kmethod == 'qIT':
-        X_train = 0.1 * X_train # Rescale quantum data to be < 2pi
+        #X_train = 0.1 * X_train # Rescale quantum data to be < 2pi
         get_kernel_matrix = partial(get_kernel_matrix_qIT, seed=seed, n_shots=qIT_shots)
         ocsvm = OneClassSVM(kernel=get_kernel_matrix, nu=0.1, cache_size=2000)
     elif kmethod == 'qRM':
-        X_train = 0.1 * X_train
+        #X_train = 0.1 * X_train
         get_kernel_matrix = partial(get_kernel_matrix_qRM, seed=seed, n_shots=qRM_shots, n_settings=qRM_settings)
         ocsvm = OneClassSVM(kernel=get_kernel_matrix, nu=0.1, cache_size=2000)
     elif kmethod == 'qVS':
-        X_train = 0.1 * X_train
+        #X_train = 0.1 * X_train
         raise(NotImplementedError, "Code for training with qVS still has not been implemented.")
     previous_t = retrieve_interim_kernel_calculation_time(kmethod, len(X_train), 'train', seed, \
                                     len(X_train[0]), qIT_shots, qRM_shots, qRM_settings, qVS_subsamples)
