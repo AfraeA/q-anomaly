@@ -9,7 +9,9 @@ parser = argparse.ArgumentParser(description='Processing experiment specificatio
 parser.add_argument('--kmethod', choices=["cRBF", "qIT", "qRM", "qVS", "qDISC", "qBBF"], required=True, help='Method to calculate the kernel matrix.')
 parser.add_argument('--n_pc', type=int, required=True, help='Number of principal components or qubits.')
 parser.add_argument('--seed', type=int, required=True, help='Seed value to initialize random number generation.')
-parser.add_argument('--size', type=int, default=500, help='Size of the dataset sample.')
+parser.add_argument('--train_size', type=int, default=500, help='Size of the training dataset sample.')
+parser.add_argument('--test_size', type=int, default=125, help='Size of the testing dataset sample.')
+parser.add_argument('--anomaly_ratio', type=float, default=0.05, help='Ratio of anomalies in the testing dataset.')
 parser.add_argument('--qIT_shots', default=1000, type=int, help='Number of shots when measuring the quantum inversion test circuit.')
 parser.add_argument('--qRM_shots', type=int, default=8000, help='Number of shots when measuring the quantum randomized measurements circuit.')
 parser.add_argument('--qRM_settings', type=int, default=8, help='Number of basis rotations to be used for randomized measurements.')
@@ -27,7 +29,7 @@ if not check_tested(args.kmethod, args.seed, args.size, args.n_pc, args.qIT_shot
     data = import_data(data_url)
 
     # Splitting and preprocessing data
-    train_data, test_data = split_dataset(data, args.size)
+    train_data, test_data = split_dataset(data, args.train_size, args.test_size, args.anomaly_ratio)
     X_train, y_train, pca_scaler, pca, scaler = preprocess_data(train_data, args.seed, args.n_pc, train_split=True)
     X_test, y_test, _, _, _ = preprocess_data(test_data, args.seed, args.n_pc, pca_sc=pca_scaler, pca=pca, sc=scaler)
 

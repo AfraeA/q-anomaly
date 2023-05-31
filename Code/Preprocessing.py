@@ -23,7 +23,8 @@ def import_data(data_url):
     data = pd.read_csv(data_file)
     data.drop(columns=["Time", "Amount"], inplace=True)
     return data
-def get_split_indices(data, size, train_split=False):
+
+def get_split_indices(data, size, train_split=False, anomaly_ratio=0.05):
     
     anomalous_indices = data[data['Class'] == 1].index
     nominal_indices = data[data['Class'] == 0].index
@@ -31,7 +32,7 @@ def get_split_indices(data, size, train_split=False):
     if train_split:
         sample_indices = np.random.choice(nominal_indices, replace=False, size=size)
     else:
-        anomalous_size = int(0.05*size)
+        anomalous_size = int(anomaly_ratio*size)
         nominal_size = size - anomalous_size
         
         sample_nominal_indices = np.random.choice(nominal_indices, replace=False, size=nominal_size)
@@ -40,10 +41,10 @@ def get_split_indices(data, size, train_split=False):
         sample_indices = np.sort(np.append(sample_nominal_indices, sample_anomalous_indices))
     return sample_indices
 
-def split_dataset(data, size):
+def split_dataset(data, train_size, test_size, anomaly_ratio=0.05):
     
-    train_indices = get_split_indices(data, size, train_split=True)
-    test_indices = get_split_indices(data.drop(train_indices), size)
+    train_indices = get_split_indices(data, train_size, train_split=True)
+    test_indices = get_split_indices(data.drop(train_indices), test_size, anomaly_ratio)
     
     assert np.intersect1d(train_indices, test_indices).size == 0, \
                 "The train and test set contains common elements"
