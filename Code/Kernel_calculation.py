@@ -90,7 +90,7 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
     for i, j in progression_bar:
         start_t = time.time()
         progression_bar.set_description("Processing gram_matrix [%d][%d]" %(i, j))
-        if j >= i:
+        if (split == 'test') or (split == 'train' and j >= i):
             gram_matrix[i][j] = get_kernel_element_qIT(X1[i], X2[j], n_shots)
             if j == i or n_pc > 8:
                 save_interim_kernel_copy(gram_matrix, 'qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
@@ -98,6 +98,8 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
                 save_interim_kernel_calculation_time(end_t-start_t, False, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
         else:
             continue
+    if split=='train':
+        gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
     save_interim_kernel_copy(gram_matrix, 'qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
     save_interim_kernel_calculation_time(0, True, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
     return gram_matrix
@@ -226,7 +228,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     # Calculate the missing kernel elements and save each row and the time it took to calculate it
     for i, j in km_progress_bar:
         km_progress_bar.set_description("Processing gram_matrix RM [%d][%d]" %(i, j))
-        if j >= i:
+        if (split == 'test') or (split == 'train' and j >= i):
             start_t = time.time()
             gram_matrix[i][j] = combine_randomized_measurements(X1_measurements[i], X2_measurements[j])
             if j == i or n_pc > 8:
@@ -238,6 +240,8 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     # Apply mitigation and save the final kernel copy as well as its calculation time
     start_t = time.time() 
     gram_matrix = apply_mitigation(gram_matrix)
+    if split=='train':
+        gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
     save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, 0, n_shots, n_settings, split)
     end_t = time.time()
     save_interim_kernel_calculation_time(end_t - start_t, True, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
