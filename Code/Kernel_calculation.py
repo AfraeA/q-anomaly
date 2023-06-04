@@ -70,7 +70,7 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
     start_t = time.time()
     # Check if retrieve_interim_kernel_copy() returns a matrix or -1.
     gram_matrix = retrieve_interim_kernel_copy('qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
-    if gram_matrix is not None and gram_matrix[-1, -1] == 1:
+    if gram_matrix is not None and gram_matrix[-1, -1] > 0:
         return gram_matrix
     elif gram_matrix is None:
         # If it returns None, then initialize with zeros and start calculating from beginning
@@ -193,7 +193,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     split = 'train' if np.array_equal(X1,X2) else 'test'
     # Retrive old kernel copy and return it if it is complete
     gram_matrix = retrieve_interim_kernel_copy('qRM', (X1_size, X2_size), seed, n_pc, 0, n_shots, n_settings, split)
-    if gram_matrix is not None and gram_matrix[-1, -1] == 1:
+    if gram_matrix is not None and is_kernel_complete('qRM', X1_size, split, seed, n_pc, n_shots, n_settings):
         return gram_matrix
     elif gram_matrix is not None and gram_matrix[-1, -1] != 0:
         start_t = time.time()
@@ -459,3 +459,26 @@ def retrieve_interim_kernel_calculation_time(kmethod, size, split, seed, n_pc, q
         if time_array.size == 0:
             return 0
         return time_array[0]
+
+def is_kernel_complete(kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
+    '''
+    Checks whether the kernel was completed (including mitigation for qRM)
+    '''
+    interimResultsFolder = f'./InterimResults/{kmethod}/{split}/'
+    if not os.path.exists(interimResultsFolder):
+        return 0
+    KernelCalcTimeFile = interimResultsFolder
+    KernelCalcTimeFile += f'kernel_calculation_times_dsize_{size}'
+    KernelCalcTimeFile += f'_seed_{seed}_n_pc_{n_pc}'
+    if kmethod=='qIT':
+        KernelCalcTimeFile += f'_n_shots_{qIT_shots}'
+    elif kmethod=='qRM':
+        KernelCalcTimeFile += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    KernelCalcTimeFile += '.npy'
+    if not os.path.exists(KernelCalcTimeFile):
+        return False
+    else:
+        time_array = np.load(KernelCalcTimeFile)
+        if time_array.size == 0:
+            return False
+        return time_array[1]

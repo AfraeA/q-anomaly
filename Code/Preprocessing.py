@@ -38,13 +38,13 @@ def get_split_indices(data, size, train_split=False, anomaly_ratio=0.05):
         sample_nominal_indices = np.random.choice(nominal_indices, replace=False, size=nominal_size)
         sample_anomalous_indices = np.random.choice(anomalous_indices, replace=False, size=anomalous_size)
 
-        sample_indices = np.sort(np.append(sample_nominal_indices, sample_anomalous_indices))
+        sample_indices = np.append(sample_nominal_indices, sample_anomalous_indices)
     return sample_indices
 
 def split_dataset(data, train_size, test_size, anomaly_ratio=0.05):
-    
+
     train_indices = get_split_indices(data, train_size, train_split=True)
-    test_indices = get_split_indices(data.drop(train_indices), test_size, anomaly_ratio)
+    test_indices = get_split_indices(data.drop(train_indices), test_size, False, anomaly_ratio)
     
     assert np.intersect1d(train_indices, test_indices).size == 0, \
                 "The train and test set contains common elements"
@@ -52,7 +52,7 @@ def split_dataset(data, train_size, test_size, anomaly_ratio=0.05):
     test_data = np.take(data, test_indices, axis=0)
     return train_data, test_data
 
-def preprocess_data(data, seed, n_pc, train_split=False, pca_sc=None, pca=None, sc=None):
+def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, pca=None):
     
     features = data.drop(columns=["Class"])
     labels = data["Class"]
@@ -65,15 +65,14 @@ def preprocess_data(data, seed, n_pc, train_split=False, pca_sc=None, pca=None, 
         # PCA
         pca = PCA(n_components=n_pc, random_state=seed)
         features = pca.fit_transform(features)
-        
-        # Rescaling to zero mean and 1/sqrt(M) variance 
-        sc = StandardScaler()
-        features = sc.fit_transform(features) / np.sqrt(n_pc)
+        if kmethod.startswith('q'):
+            features = features * 0.1
     else:
         try:
             features = pca_sc.transform(features)
             features = pca.transform(features)
-            features = sc.transform(features) / np.sqrt(n_pc)
+            if kmethod.startswith('q'):
+                features = features * 0.1
         except:
-            print('PCA or Scalers not available')
-    return features, labels, pca_sc, pca, sc
+            print('PCA or Scaler not available')
+    return features, labels, pca_sc, pca

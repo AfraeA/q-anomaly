@@ -14,7 +14,7 @@ def retrieve_result_dfs(size=500, qIT_shots=1000, qRM_shots=8000, qRM_settings=8
     return {'cRBF': cRBF_df, 'qIT': qIT_df, 'qRM':qRM_df}
 def plot_performance_by_npc(smoothing=True, errorbar=True, alpha=0.2, size=500, qIT_shots=None, \
                 qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
-    result_dfs = retrieve_result_dfs(size, qIT_shots, qRM_shots, qRM_settings, qVS_samples)
+    result_dfs = retrieve_result_dfs(size, qIT_shots, qRM_shots, qRM_settings, qVS_subsamples)
     metrics = np.array([['avgPrecision', 'auroc'], ['precision', 'recall']])
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10,10))
     for kmethod, df in result_dfs.items():

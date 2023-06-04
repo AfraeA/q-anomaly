@@ -11,7 +11,7 @@ qVS_subsamples=10
 for method in ${methods[@]}; do
     for seed in $(seq 0 $(($runs-1))); do
         for pc in $(seq 1 $pcs); do
-            python3 ./Code/job-local.sh $method $pc $seed $qIT_shots $qRM_shots $qRM_settings $qVS_subsamples
+            ./Code/job-local.sh $method $pc $seed $qIT_shots $qRM_shots $qRM_settings $qVS_subsamples
         done
     done
 done

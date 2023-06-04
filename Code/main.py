@@ -21,7 +21,7 @@ args = parser.parse_args()
 np.random.seed(args.seed)
 
 # Check if model was already trained and tested:
-if not check_tested(args.kmethod, args.seed, args.size, args.n_pc, args.qIT_shots, \
+if not check_tested(args.kmethod, args.seed, args.train_size, args.n_pc, args.qIT_shots, \
                 args.qRM_shots, args.qRM_settings, args.qVS_subsamples):
     
     # Download data from OpenML
@@ -30,9 +30,10 @@ if not check_tested(args.kmethod, args.seed, args.size, args.n_pc, args.qIT_shot
 
     # Splitting and preprocessing data
     train_data, test_data = split_dataset(data, args.train_size, args.test_size, args.anomaly_ratio)
-    X_train, y_train, pca_scaler, pca, scaler = preprocess_data(train_data, args.seed, args.n_pc, train_split=True)
-    X_test, y_test, _, _, _ = preprocess_data(test_data, args.seed, args.n_pc, pca_sc=pca_scaler, pca=pca, sc=scaler)
+    X_train, y_train, pca_scaler, pca = preprocess_data(train_data, args.kmethod, args.seed, args.n_pc, train_split=True)
+    X_test, y_test, _, _ = preprocess_data(test_data, args.kmethod, args.seed, args.n_pc, pca_sc=pca_scaler, pca=pca)
 
+    assert np.count_nonzero(y_test), "Test data contains only genuine data points"
     assert X_train.shape[1] == args.n_pc and X_test.shape[1] == args.n_pc, "Dataset was preprocessed incorrectly"
 
     # Training and collecting metrics on test set
@@ -40,7 +41,7 @@ if not check_tested(args.kmethod, args.seed, args.size, args.n_pc, args.qIT_shot
                     qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings, qVS_subsamples=args.qVS_subsamples)
 
     # Saving the model
-    save_model(ocsvm, args.kmethod, args.seed, args.size, args.n_pc, qIT_shots=args.qIT_shots, \
+    save_model(ocsvm, args.kmethod, args.seed, args.train_size, args.n_pc, qIT_shots=args.qIT_shots, \
                     qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings,  qVS_subsamples=args.qVS_subsamples)
 
     # Gathering metrics
@@ -49,7 +50,7 @@ if not check_tested(args.kmethod, args.seed, args.size, args.n_pc, args.qIT_shot
                     qRM_settings=args.qRM_settings, qVS_subsamples=args.qVS_subsamples)
 
     # Saving the results of model
-    save_results(args.kmethod, args.seed, args.size, args.n_pc, \
+    save_results(args.kmethod, args.seed, args.train_size, args.n_pc, \
                     avgPrecision, precision, recall, f1_score, \
                     auroc, train_time, test_time, args.qIT_shots, args.qRM_shots, \
                     args.qRM_settings, args.qVS_subsamples)

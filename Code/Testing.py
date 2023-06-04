@@ -10,8 +10,6 @@ ROOT_DIR = os.path.dirname(os.path.abspath('./__file__'))
 def test_model(ocsvm, X_test, y_test, seed, kmethod, qIT_shots=None, \
                 qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
     print('Gathering performance metrics...')
-    if kmethod.startswith('q'):
-        X_test = 0.1 * X_test # Rescale quantum data to be < 2pi
     previous_t = retrieve_interim_kernel_calculation_time(kmethod, len(X_test), 'test', seed, \
                                     len(X_test[0]), qIT_shots, qRM_shots, qRM_settings, qVS_subsamples)
     start_test_time = time.time()
