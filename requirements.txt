@@ -44,7 +44,6 @@ pylatexenc==2.10
 pyparsing==3.0.9
 python-dateutil==2.8.2
 pytz==2023.3
-pywin32==306
 pyzmq==25.0.2
 qiskit==0.42.1
 qiskit-aer==0.12.0

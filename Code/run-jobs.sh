@@ -18,7 +18,7 @@ else
 fi
 
 for method in ${methods[@]}; do
-    for seed in $(seq 0 $(($runs-1))); do
+    for seed in $(seq 4 $(($runs-1))); do
         for pc in $(seq 6 $pcs); do
             if [ -z "$sbatch_cmd" ]; then
                 echo "\033[1;32mExecuting job with environment variables:\033[0m $method $pc $seed"

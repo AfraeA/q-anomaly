@@ -1,10 +1,11 @@
 /env/
-/Models/
 /Plots/
-/Results/
-/InterimResults/
 /Data/
-/Code/__Pycache__/
+/Code/__pycache__/
 /Code/.ipynb_checkpoints/
 /Code/*.ipynb
 /.vscode/
+*.out
+libbz2-dev
+libncursesw5-dev
+git

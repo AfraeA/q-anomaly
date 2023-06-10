@@ -5,8 +5,8 @@ import pandas as pd
 from tqdm import tqdm, trange
 from itertools import product, chain
 
-# from functools import partialmethod
-# tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+from functools import partialmethod
+tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
 from qiskit import QuantumRegister, QuantumCircuit, ClassicalRegister, transpile
 from qiskit.providers.aer import QasmSimulator
