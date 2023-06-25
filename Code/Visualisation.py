@@ -20,7 +20,6 @@ def plot_performance_by_npc(smoothing=True, errorbar=True, alpha=0.2, size=500, 
     for kmethod, df in result_dfs.items():
         g_df = df.groupby('num_pc')
         for i,j in product(range(metrics.shape[0]), range(metrics.shape[1])):
-            axes[i,j].legend(loc='upper left')
             axes[i,j].set_ylim(0,1)
             if smoothing:
                 metric_smoothed_mean = g_df.mean()[metrics[i,j]].ewm(alpha=0.2).mean()
@@ -35,10 +34,11 @@ def plot_performance_by_npc(smoothing=True, errorbar=True, alpha=0.2, size=500, 
                     metric_smoothed_max = g_df.max()[metrics[i,j]]
                     metric_smoothed_min = g_df.min()[metrics[i,j]]    
                 axes[i,j].fill_between(g_df['num_pc'].mean().values, metric_smoothed_min, metric_smoothed_max, alpha=0.2)
+            axes[i,j].legend(loc='upper left')
     # Add code for Plots folder creation here
     plotsFolderName = f'{ROOT_DIR}/Plots/performance_by_npc'
     if not os.path.exists(plotsFolderName):
-        os.mkdir(plotsFolderName)
+        os.makedirs(plotsFolderName)
     plotFileName += f'_size_{size}'
     plotFileName += f'_qIT_shots_{qIT_shots}'
     plotFileName += f'_qRM_shots_{qRM_shots}_qRM_settings_{qRM_settings}'

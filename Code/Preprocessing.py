@@ -52,7 +52,7 @@ def split_dataset(data, train_size, test_size, anomaly_ratio=0.05):
     test_data = np.take(data, test_indices, axis=0)
     return train_data, test_data
 
-def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, pca=None):
+def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, pca=None, sc=None):
     
     features = data.drop(columns=["Class"])
     labels = data["Class"]
@@ -65,14 +65,19 @@ def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, p
         # PCA
         pca = PCA(n_components=n_pc, random_state=seed)
         features = pca.fit_transform(features)
-        if kmethod.startswith('q'):
+        if kmethod == 'qRM':
+            sc = StandardScaler()
+            features = sc.fit_transform(features) / np.sqrt(n_pc)
+        elif kmethod.startswith('q'):
             features = features * 0.1
     else:
         try:
             features = pca_sc.transform(features)
             features = pca.transform(features)
-            if kmethod.startswith('q'):
+            if kmethod == 'qRM':
+                features = sc.transform(features) / np.sqrt(n_pc)
+            elif kmethod.startswith('q'):
                 features = features * 0.1
         except:
-            print('PCA or Scaler not available')
-    return features, labels, pca_sc, pca
+            print('PCA or Scalers not available')
+    return features, labels, pca_sc, pca, sc

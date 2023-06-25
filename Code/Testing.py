@@ -7,13 +7,20 @@ from Kernel_calculation import retrieve_interim_kernel_calculation_time
 
 ROOT_DIR = os.path.dirname(os.path.abspath('./__file__'))
 
-def test_model(ocsvm, X_test, y_test, seed, kmethod, qIT_shots=None, \
-                qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
+def test_model(model, X_test, y_test, seed, kmethod, qIT_shots=None, \
+                qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     print('Gathering performance metrics...')
-    previous_t = retrieve_interim_kernel_calculation_time(kmethod, len(X_test), 'test', seed, \
-                                    len(X_test[0]), qIT_shots, qRM_shots, qRM_settings, qVS_subsamples)
+    previous_t = retrieve_interim_kernel_calculation_time(kmethod, len(X_test), 'test', seed, len(X_test[0]), \
+                                    qIT_shots=qIT_shots, qRM_shots=qRM_shots, qRM_settings=qRM_settings, \
+                                    qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     start_test_time = time.time()
-    predictions = ocsvm.predict(X_test)
+    if kmethod == 'qVS':
+        # We get the decision function for datapoint in the test set using all the components
+        predictions_per_component = np.vstack([component.decision_function(X_test) for component in model])
+        # We normalise the outlier scores and average them, then extract the label using the sign function
+        predictions = np.sign(((predictions_per_component - predictions_per_component.mean())/predictions_per_component.std()).mean(axis=0))
+    else:
+        predictions = model.predict(X_test)
     end_test_time = time.time()
     testDuration = end_test_time - start_test_time + previous_t
     
@@ -28,7 +35,7 @@ def test_model(ocsvm, X_test, y_test, seed, kmethod, qIT_shots=None, \
 
 def save_results(kmethod, seed, size, n_pc, avgPrecision, precision, \
                 recall, f1_score, auroc, train_time, test_time, qIT_shots=None, \
-                qRM_shots=None, qRM_settings=None, n_subsamples=None):
+                qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     print('Saving results to Results folder...')
     resultsFolderName = f'{ROOT_DIR}/Results/'
     if not os.path.exists(resultsFolderName):
@@ -42,10 +49,7 @@ def save_results(kmethod, seed, size, n_pc, avgPrecision, precision, \
     elif kmethod == 'qRM':
         resultFileName += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
     elif kmethod == 'qVS':
-            resultFileName += f'_n_subsamples_{n_subsamples}'
-    else:
-        #TODO: add handling for hyperparameters of qDISC and qBBF
-        pass
+            resultFileName += f'_n_subsamples_{qVS_subsamples}_maxsize_{qVS_maxsize}'
     resultFileName += '.csv'
     if not os.path.exists(resultFileName):
         with open(resultFileName, 'w+') as resultFile:
@@ -57,7 +61,7 @@ def save_results(kmethod, seed, size, n_pc, avgPrecision, precision, \
                                              recall, f1_score, auroc, train_time, test_time))
         
 def check_tested(kmethod, seed, size, n_pc, qIT_shots=None, \
-                qRM_shots=None, qRM_settings=None, n_subsamples=None):
+                qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Checks if model was already trained and tested.
     '''
@@ -69,7 +73,7 @@ def check_tested(kmethod, seed, size, n_pc, qIT_shots=None, \
     elif kmethod == 'qRM':
         resultFileName += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
     elif kmethod == 'qVS':
-            resultFileName += f'_n_subsamples_{n_subsamples}'
+            resultFileName += f'_n_subsamples_{qVS_subsamples}_maxsize_{qVS_maxsize}'
     else:
         #TODO: add handling for hyperparameters of qDISC and qBBF
         pass

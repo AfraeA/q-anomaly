@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import numpy as np
 import pandas as pd
@@ -59,7 +60,7 @@ def get_kernel_element_qIT(x1, x2, n_shots=1000):
     prob0 = 0 if ('0'*len(x1)) not in counts.keys() else (counts[('0'*len(x1))]/n_shots)
     return prob0
 
-def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
+def get_kernel_matrix_qIT(X1, X2, seed=None, kmethod='qIT', n_shots=1000, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Returns the kernel matrix using inversion tests
     '''
@@ -69,7 +70,8 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
     split = 'train' if np.array_equal(X1,X2) else 'test'
     start_t = time.time()
     # Check if retrieve_interim_kernel_copy() returns a matrix or -1.
-    gram_matrix = retrieve_interim_kernel_copy('qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
+    gram_matrix = retrieve_interim_kernel_copy(kmethod, (X1_size, X2_size), seed, n_pc, split=split, qIT_shots=n_shots, \
+                                            qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     if gram_matrix is not None and gram_matrix[-1, -1] > 0:
         return gram_matrix
     elif gram_matrix is None:
@@ -85,7 +87,8 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
         indices = chain(product([next_i], range(next_j, X2_size)), \
                         product(range(next_i+1, X1_size), range(0, X2_size)))
     end_t = time.time()
-    save_interim_kernel_calculation_time(end_t-start_t, False, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
+    save_interim_kernel_calculation_time(end_t-start_t, False, kmethod, X1_size, split, seed, n_pc, qIT_shots=n_shots, \
+                                        qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     progression_bar = tqdm(indices, total=num_eval)
     for i, j in progression_bar:
         start_t = time.time()
@@ -93,15 +96,19 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, n_shots=1000):
         if (split == 'test') or (split == 'train' and j >= i):
             gram_matrix[i][j] = get_kernel_element_qIT(X1[i], X2[j], n_shots)
             if j == i or n_pc > 8:
-                save_interim_kernel_copy(gram_matrix, 'qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
+                save_interim_kernel_copy(gram_matrix, kmethod, (X1_size, X2_size), seed, n_pc, split=split, qIT_shots=n_shots, \
+                                        qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
                 end_t = time.time()
-                save_interim_kernel_calculation_time(end_t-start_t, False, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
+                save_interim_kernel_calculation_time(end_t-start_t, False, kmethod, X1_size, split, seed, n_pc, qIT_shots=n_shots, \
+                                                    qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
         else:
             continue
     if split=='train':
         gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
-    save_interim_kernel_copy(gram_matrix, 'qIT', (X1_size, X2_size), seed, n_pc, n_shots, None, None, split)
-    save_interim_kernel_calculation_time(0, True, 'qIT', X1_size, split, seed, n_pc, qIT_shots=n_shots)
+    save_interim_kernel_copy(gram_matrix, kmethod, (X1_size, X2_size), seed, n_pc, split=split, qIT_shots=n_shots, \
+                            qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
+    save_interim_kernel_calculation_time(0, True, kmethod, X1_size, split, seed, n_pc, qIT_shots=n_shots, \
+                                        qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     return gram_matrix
 
 def get_qRM_settings_list(seed, n_pc, n_settings):
@@ -192,13 +199,13 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     X1_size, X2_size, n_pc = len(X1), len(X2), len(X1[0])
     split = 'train' if np.array_equal(X1,X2) else 'test'
     # Retrive old kernel copy and return it if it is complete
-    gram_matrix = retrieve_interim_kernel_copy('qRM', (X1_size, X2_size), seed, n_pc, 0, n_shots, n_settings, split)
+    gram_matrix = retrieve_interim_kernel_copy('qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     if gram_matrix is not None and is_kernel_complete('qRM', X1_size, split, seed, n_pc, n_shots, n_settings):
         return gram_matrix
     elif gram_matrix is not None and gram_matrix[-1, -1] != 0:
         start_t = time.time()
         gram_matrix = apply_mitigation(gram_matrix)
-        save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, 0, n_shots, n_settings, split)
+        save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
         end_t = time.time()
         save_interim_kernel_calculation_time(end_t-start_t, True, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
         return gram_matrix
@@ -232,7 +239,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
             start_t = time.time()
             gram_matrix[i][j] = combine_randomized_measurements(X1_measurements[i], X2_measurements[j])
             if j == i or n_pc > 8:
-                save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, 0, n_shots, n_settings, split)
+                save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
                 end_t = time.time()
                 save_interim_kernel_calculation_time(end_t - start_t, False, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
         else:
@@ -242,7 +249,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     gram_matrix = apply_mitigation(gram_matrix)
     if split=='train':
         gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
-    save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, 0, n_shots, n_settings, split)
+    save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     end_t = time.time()
     save_interim_kernel_calculation_time(end_t - start_t, True, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
     return gram_matrix
@@ -295,7 +302,8 @@ def apply_mitigation(gram_matrix):
             continue
     return gram_matrix
 
-def save_interim_kernel_copy(interimKernelCopy, kmethod, size, seed, n_pc, qIT_shots, qRM_shots, qRM_settings, split):
+def save_interim_kernel_copy(interimKernelCopy, kmethod, size, seed, n_pc, split=None, qIT_shots=None,\
+                            qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Saves the interim copy of the quantum kernel in a file in the InterimResults folder
     Can be called from all quantum kernel
@@ -309,6 +317,8 @@ def save_interim_kernel_copy(interimKernelCopy, kmethod, size, seed, n_pc, qIT_s
         interimKernelCopyPath += f'_n_shots_{qIT_shots}'
     elif kmethod=='qRM':
         interimKernelCopyPath += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    elif kmethod=='qVS':
+        interimKernelCopyPath += f'_n_subsamples_{qVS_subsamples}_n_maxsize_{qVS_maxsize}'
     interimKernelCopyPath += '.npy'
     # TODO: Add handling for qVS and qBBF
     np.save(interimKernelCopyPath, interimKernelCopy)
@@ -334,7 +344,8 @@ def find_kernel_entry_index(interimKernelCopy):
         new_index = (last_index[0], last_index[1]+1)
     return new_index
 
-def retrieve_interim_kernel_copy(kmethod, size, seed, n_pc, qIT_shots, qRM_shots, qRM_settings, split):
+def retrieve_interim_kernel_copy(kmethod, size, seed, n_pc, split=None, qIT_shots=None, \
+                                qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Returns the last saved kernel copy and the last_coordinates computed
     The argument last_coordinates should help restarting kernel calculation
@@ -410,7 +421,7 @@ def get_saved_qRM_settings(seed, n_pc, qRM_settings):
     return None
 
 def save_interim_kernel_calculation_time(calc_time, complete, kmethod, size, split, seed,\
-                n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
+                n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Saves the time it took to calculate the interim kernel copy
     '''
@@ -424,6 +435,8 @@ def save_interim_kernel_calculation_time(calc_time, complete, kmethod, size, spl
         KernelCalcTimeFile += f'_n_shots_{qIT_shots}'
     elif kmethod=='qRM':
         KernelCalcTimeFile += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    elif kmethod=='qVS':
+        KernelCalcTimeFile += f'_n_subsamples_{qVS_subsamples}_maxsize_{qVS_maxsize}'
     KernelCalcTimeFile += '.npy'
     if not os.path.exists(KernelCalcTimeFile):
         time_array = np.array([calc_time, complete])
@@ -437,7 +450,8 @@ def save_interim_kernel_calculation_time(calc_time, complete, kmethod, size, spl
             time_array[1] = complete
         np.save(KernelCalcTimeFile, time_array)
 
-def retrieve_interim_kernel_calculation_time(kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
+def retrieve_interim_kernel_calculation_time(kmethod, size, split, seed, n_pc, qIT_shots=None, \
+                                        qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Returns the time it took previously to calculate the interim kernel copy if there was a previous calculation, otherwise it returns 0
     '''
@@ -451,6 +465,20 @@ def retrieve_interim_kernel_calculation_time(kmethod, size, split, seed, n_pc, q
         KernelCalcTimeFile += f'_n_shots_{qIT_shots}'
     elif kmethod=='qRM':
         KernelCalcTimeFile += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    elif kmethod=='qVS':
+        # Find all kernel calculation time files that correspond to the regex
+        regex = re.compile(f'^kernel_calculation_times_dsize_.*_seed_{seed}_n_pc_\
+                        {n_pc}_n_subsamples_{qVS_subsamples}_maxsize_{qVS_maxsize}.npy$')
+        calculation_time_files_list = [file for file in tuple(os.walk(interimResultsFolder))[0][2] if regex.match(file)]
+        # Gather the time from the different files
+        previous_time = 0
+        for filename in calculation_time_files_list:
+            KernelCalcTimeFile = interimResultsFolder + f'{filename}'
+            if os.path.exists(KernelCalcTimeFile):
+                time_array = np.load(KernelCalcTimeFile)
+                if time_array.size != 0:
+                    previous_time += time_array[0]
+        return previous_time
     KernelCalcTimeFile += '.npy'
     if not os.path.exists(KernelCalcTimeFile):
         return 0
@@ -460,7 +488,7 @@ def retrieve_interim_kernel_calculation_time(kmethod, size, split, seed, n_pc, q
             return 0
         return time_array[0]
 
-def is_kernel_complete(kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None):
+def is_kernel_complete(kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     '''
     Checks whether the kernel was completed (including mitigation for qRM)
     '''
@@ -482,3 +510,4 @@ def is_kernel_complete(kmethod, size, split, seed, n_pc, qIT_shots=None, qRM_sho
         if time_array.size == 0:
             return False
         return time_array[1]
+    # TODO: refactor all checks here
