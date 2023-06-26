@@ -16,7 +16,7 @@ parser.add_argument('--qIT_shots', default=1000, type=int, help='Number of shots
 parser.add_argument('--qRM_shots', type=int, default=8000, help='Number of shots when measuring the quantum randomized measurements circuit.')
 parser.add_argument('--qRM_settings', type=int, default=8, help='Number of basis rotations to be used for randomized measurements.')
 parser.add_argument('--qVS_subsamples', type=int, help='Number of dataset subsamples for variable subsampling.')
-parser.add_argument('--qVS_maxsize', type=float, help='Maximum number of data points per subsample for variable subsampling.')
+parser.add_argument('--qVS_maxsize', type=int, help='Maximum number of data points per subsample for variable subsampling.')
 args = parser.parse_args()
 
 np.random.seed(args.seed)

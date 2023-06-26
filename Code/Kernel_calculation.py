@@ -6,9 +6,6 @@ import pandas as pd
 from tqdm import tqdm, trange
 from itertools import product, chain
 
-from functools import partialmethod
-tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
-
 from qiskit import QuantumRegister, QuantumCircuit, ClassicalRegister, transpile
 from qiskit.providers.aer import QasmSimulator
 from qiskit.quantum_info import random_unitary
@@ -87,7 +84,7 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, kmethod='qIT', n_shots=1000, qVS_su
         indices = chain(product([next_i], range(next_j, X2_size)), \
                         product(range(next_i+1, X1_size), range(0, X2_size)))
     end_t = time.time()
-    save_interim_kernel_calculation_time(end_t-start_t, False, kmethod, X1_size, split, seed, n_pc, qIT_shots=n_shots, \
+    save_interim_kernel_calculation_time(end_t-start_t, False, kmethod, (X1_size, X2_size), split, seed, n_pc, qIT_shots=n_shots, \
                                         qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     progression_bar = tqdm(indices, total=num_eval)
     for i, j in progression_bar:
@@ -99,7 +96,7 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, kmethod='qIT', n_shots=1000, qVS_su
                 save_interim_kernel_copy(gram_matrix, kmethod, (X1_size, X2_size), seed, n_pc, split=split, qIT_shots=n_shots, \
                                         qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
                 end_t = time.time()
-                save_interim_kernel_calculation_time(end_t-start_t, False, kmethod, X1_size, split, seed, n_pc, qIT_shots=n_shots, \
+                save_interim_kernel_calculation_time(end_t-start_t, False, kmethod, (X1_size, X2_size), split, seed, n_pc, qIT_shots=n_shots, \
                                                     qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
         else:
             continue
@@ -107,7 +104,7 @@ def get_kernel_matrix_qIT(X1, X2, seed=None, kmethod='qIT', n_shots=1000, qVS_su
         gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
     save_interim_kernel_copy(gram_matrix, kmethod, (X1_size, X2_size), seed, n_pc, split=split, qIT_shots=n_shots, \
                             qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
-    save_interim_kernel_calculation_time(0, True, kmethod, X1_size, split, seed, n_pc, qIT_shots=n_shots, \
+    save_interim_kernel_calculation_time(0, True, kmethod, (X1_size, X2_size), split, seed, n_pc, qIT_shots=n_shots, \
                                         qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     return gram_matrix
 
@@ -200,19 +197,19 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     split = 'train' if np.array_equal(X1,X2) else 'test'
     # Retrive old kernel copy and return it if it is complete
     gram_matrix = retrieve_interim_kernel_copy('qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
-    if gram_matrix is not None and is_kernel_complete('qRM', X1_size, split, seed, n_pc, n_shots, n_settings):
+    if gram_matrix is not None and is_kernel_complete('qRM', (X1_size, X2_size), split, seed, n_pc, n_shots, n_settings):
         return gram_matrix
     elif gram_matrix is not None and gram_matrix[-1, -1] != 0:
         start_t = time.time()
         gram_matrix = apply_mitigation(gram_matrix)
         save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
         end_t = time.time()
-        save_interim_kernel_calculation_time(end_t-start_t, True, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
+        save_interim_kernel_calculation_time(end_t-start_t, True, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
         return gram_matrix
     start_t = time.time()
     qRM_settings_list = get_qRM_settings_list(seed, n_pc, n_settings)
     end_t = time.time()
-    save_interim_kernel_calculation_time(end_t-start_t, False, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
+    save_interim_kernel_calculation_time(end_t-start_t, False, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
     # Measure and save the datasets' measurements using randomized measurements, the time for the calculation is saved from within the function
     X1_measurements = get_dataset_randomized_measurements(X1, 1, seed, qRM_settings_list, n_shots, split)
     if split == 'test':
@@ -230,7 +227,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
         indices = chain(product([next_i], range(next_j, X2_size)), \
                         product(range(next_i+1, X1_size), range(0, X2_size)))
     end_t = time.time()
-    save_interim_kernel_calculation_time(end_t - start_t, False, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
+    save_interim_kernel_calculation_time(end_t - start_t, False, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
     km_progress_bar = tqdm(indices, total=num_eval, position=0, leave=True)
     # Calculate the missing kernel elements and save each row and the time it took to calculate it
     for i, j in km_progress_bar:
@@ -241,7 +238,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
             if j == i or n_pc > 8:
                 save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
                 end_t = time.time()
-                save_interim_kernel_calculation_time(end_t - start_t, False, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
+                save_interim_kernel_calculation_time(end_t - start_t, False, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
         else:
             continue
     # Apply mitigation and save the final kernel copy as well as its calculation time
@@ -251,7 +248,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
         gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
     save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     end_t = time.time()
-    save_interim_kernel_calculation_time(end_t - start_t, True, 'qRM', X1_size, split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
+    save_interim_kernel_calculation_time(end_t - start_t, True, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
     return gram_matrix
 
 def get_exponential_hamming_matrix(A,B):
@@ -287,8 +284,8 @@ def combine_randomized_measurements(x1_measurements, x2_measurements):
         strB, probB =  np.array(np.vstack(np.array(x2_result, dtype=object)[:, 0])), np.array(x2_result, dtype=object)[:, 1]
         new_trace = get_single_unitary_trace(probA, probB, strA, strB)
         traces_by_setting = np.append(traces_by_setting, new_trace)
-    traces_by_setting = (2**n_pc) * traces_by_setting
-    return traces_by_setting.mean()
+    traces_by_setting = (2**n_pc) * traces_by_setting.mean()
+    return traces_by_setting
 
 def apply_mitigation(gram_matrix):
     num_eval = len(gram_matrix)**2
@@ -356,6 +353,8 @@ def retrieve_interim_kernel_copy(kmethod, size, seed, n_pc, split=None, qIT_shot
         interimKernelCopyPath += f'_n_shots_{qIT_shots}'
     elif kmethod=='qRM':
         interimKernelCopyPath += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    elif kmethod=='qVS':
+        interimKernelCopyPath += f'_n_subsamples_{qVS_subsamples}_n_maxsize_{qVS_maxsize}'
     interimKernelCopyPath += '.npy'
     # First we check if the path exists. If the path exists, then we load and return interim KernelCopy
     if os.path.exists(interimKernelCopyPath):
