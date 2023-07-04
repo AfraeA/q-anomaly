@@ -1,10 +1,11 @@
 import time
 import os
+import re
 import numpy as np
 from sklearn.svm import OneClassSVM
 from Kernel_calculation import get_kernel_matrix_qIT, \
     get_kernel_matrix_qRM, retrieve_interim_kernel_calculation_time
-from joblib import dump
+from joblib import dump, load
 from functools import partial
 
 ROOT_DIR = os.path.dirname(os.path.abspath('./__file__'))
@@ -77,5 +78,38 @@ def save_model(model, kmethod, seed, size, n_pc, qIT_shots=None, \
         modelFileName += f'.joblib'
         dump(model, modelFileName)
     
-        
+def retrieve_model(kmethod, seed, size, n_pc, qIT_shots=None, \
+                qRM_shots=None, qRM_settings=None, \
+                qVS_subsamples=None, qVS_maxsize=None):
+    '''
+    Retrieves trained model from models directory for further testing
+    '''
+    print('Retrieving model...')
+    modelsFolderName = f'./Models/'
+    if not os.path.exists(modelsFolderName):
+        os.mkdir(modelsFolderName)
+    kmethodFolderName = modelsFolderName + f'{kmethod}/'
+    if not os.path.exists(kmethodFolderName):
+        os.mkdir(kmethodFolderName)
+    modelFileName = kmethodFolderName + f'dsize_{size}_seed_{seed}_n_pc_{n_pc}'
+    if kmethod == 'qIT':
+        modelFileName += f'_n_shots_{qIT_shots}'
+    elif kmethod == 'qRM':
+        modelFileName += f'_n_shots_{qRM_shots}_n_settings_{qRM_settings}'
+    elif kmethod == 'qVS':
+        ensembleFolderName = modelFileName + f'_n_subsamples_{qVS_subsamples}_maxsize_{qVS_maxsize}/'
+        model = []
+        # Find all model names that correspond to the regex
+        regex = re.compile(f'^_subsample_size_.*.joblib$')
+        if os.path.exists(ensembleFolderName):
+            modelFileNamesList = [file for file in tuple(os.walk(ensembleFolderName))[0][2] if regex.match(file)]
+            for filename in modelFileNamesList:
+                modelFileName = ensembleFolderName + f'/{filename}'
+                if os.path.exists(modelFileName):
+                    ocsvm = load(modelFileName)
+                    model.append(ocsvm)
+        return model
+    modelFileName += f'.joblib'
+    model = load(modelFileName, modelFileName) if os.path.exists(modelFileName) else None
+    return model     
         

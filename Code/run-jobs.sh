@@ -2,11 +2,11 @@
 
 # Specify hyperparameters
 runs=15
-methods=("qVS")
-pcs=20
+methods=("qRM")
+pcs=5
 qIT_shots=1000
-qRM_shots=16000
-qRM_settings=16
+qRM_shots=8000
+qRM_settings=30
 qVS_subsamples=5
 qVS_maxsize=100
 
@@ -19,8 +19,8 @@ else
 fi
 
 for method in ${methods[@]}; do
-    for seed in $(seq 5 5); do
-        for pc in $(seq 18 $pcs); do
+    for seed in $(seq 0 $(($runs-1))); do
+        for pc in $(seq 1 $pcs); do
             if [ -z "$sbatch_cmd" ]; then
                 echo "\033[1;32mExecuting job with environment variables:\033[0m $method $pc $seed"
                 ./Code/job.sh $method $pc $seed $qIT_shots $qRM_shots $qRM_settings $qVS_subsamples $qVS_maxsize

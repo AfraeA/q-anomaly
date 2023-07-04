@@ -68,6 +68,10 @@ def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, p
         
         if kmethod.startswith('q'):
             features = features * 0.1
+        elif kmethod == "qRM":
+            sc = StandardScaler()
+            features = sc.fit_transform(features) / np.sqrt(n_pc)
+            
     else:
         try:
             features = pca_sc.transform(features)
@@ -75,6 +79,8 @@ def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, p
             
             if kmethod.startswith('q'):
                 features = features * 0.1
+            elif kmethod == "qRM":
+                features = sc.fit_transform(features) / np.sqrt(n_pc)
         except:
             print('PCA or Scalers not available')
     return features, labels, pca_sc, pca, sc

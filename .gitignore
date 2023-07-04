@@ -1,5 +1,6 @@
 /env/
 /Plots/
+/InterimResults/
 /Data/
 /Code/__pycache__/
 /Code/.ipynb_checkpoints/
