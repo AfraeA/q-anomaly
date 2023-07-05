@@ -11,7 +11,7 @@ def get_qVS_predictions(model, X_test):
      # We get the decision function for datapoint in the test set using all the components
     predictions_per_component = np.vstack([component.decision_function(X_test) for component in model])
     # We normalise the outlier scores and average them, then extract the label using the sign function
-    predictions = np.sign(((predictions_per_component - predictions_per_component.mean())/predictions_per_component.std()).mean(axis=0))
+    predictions = np.sign(((predictions_per_component - predictions_per_component.mean())/predictions_per_component.std()).max(axis=0))
     return predictions
 
 def test_model(model, X_test, y_test, seed, kmethod, qIT_shots=None, \

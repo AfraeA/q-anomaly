@@ -2,7 +2,7 @@
 
 # Specify hyperparameters
 runs=15
-methods=("qRM")
+methods=("qVS")
 pcs=5
 qIT_shots=1000
 qRM_shots=8000

@@ -3,7 +3,7 @@ from urllib import request
 from scipy.io import arff
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
 
 ROOT_DIR = os.path.dirname(os.path.abspath('./__file__'))
@@ -80,7 +80,7 @@ def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, p
             if kmethod.startswith('q'):
                 features = features * 0.1
             elif kmethod == "qRM":
-                features = sc.fit_transform(features) / np.sqrt(n_pc)
+                features = sc.transform(features) / np.sqrt(n_pc)
         except:
             print('PCA or Scalers not available')
     return features, labels, pca_sc, pca, sc
