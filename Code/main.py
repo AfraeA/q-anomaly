@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='Processing experiment specificatio
 parser.add_argument('--kmethod', choices=["cRBF", "qIT", "qRM", "qVS", "qBBF"], required=True, help='Method to calculate the kernel matrix.')
 parser.add_argument('--n_pc', type=int, required=True, help='Number of principal components or qubits.')
 parser.add_argument('--seed', type=int, required=True, help='Seed value to initialize random number generation.')
-parser.add_argument('--train_size', type=int, default=1500, help='Size of the training dataset sample.')
+parser.add_argument('--train_size', type=int, default=500, help='Size of the training dataset sample.')
 parser.add_argument('--test_size', type=int, default=125, help='Size of the testing dataset sample.')
 parser.add_argument('--anomaly_ratio', type=float, default=0.05, help='Ratio of anomalies in the testing dataset.')
 parser.add_argument('--qIT_shots', default=1000, type=int, help='Number of shots when measuring the quantum inversion test circuit.')

@@ -202,13 +202,6 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     gram_matrix = retrieve_interim_kernel_copy('qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     if gram_matrix is not None and is_kernel_complete('qRM', (X1_size, X2_size), split, seed, n_pc, n_shots, n_settings):
         return gram_matrix
-    elif gram_matrix is not None and gram_matrix[-1, -1] != 0:
-        start_t = time.time()
-        gram_matrix = apply_mitigation(gram_matrix)
-        save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
-        end_t = time.time()
-        save_interim_kernel_calculation_time(end_t-start_t, True, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
-        return gram_matrix
     start_t = time.time()
     qRM_settings_list = get_qRM_settings_list(seed, n_pc, n_settings)
     end_t = time.time()
@@ -246,7 +239,7 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
             continue
     # Apply mitigation and save the final kernel copy as well as its calculation time
     start_t = time.time() 
-    gram_matrix = apply_mitigation(gram_matrix)
+    #gram_matrix = apply_mitigation(gram_matrix)
     if split=='train':
         gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
     save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
@@ -290,16 +283,23 @@ def combine_randomized_measurements(x1_measurements, x2_measurements):
     traces_by_setting = (2**n_pc) * traces_by_setting.mean()
     return traces_by_setting
 
-def apply_mitigation(gram_matrix):
-    num_eval = len(gram_matrix)**2
-    indices = product(range(len(gram_matrix)), range(len(gram_matrix)))
+def apply_mitigation(gram_matrix, split, X1_purities=None, X2_purities=None):
+    num_eval = gram_matrix.shape[0]*gram_matrix.shape[1]
+    indices = product(range(gram_matrix.shape[0]), range(gram_matrix.shape[1]))
     em_progress_bar = tqdm(indices, total=num_eval, position=0, leave=True)
-    for i, j in em_progress_bar:
-        em_progress_bar.set_description("Applying error mitigation [%d][%d]" %(i, j))
-        if j >= i:
-            gram_matrix[i][j] = gram_matrix[i][j] / np.sqrt(gram_matrix[i][i] * gram_matrix[j][j])
-        else:
-            continue
+    if split == 'train':
+        for i, j in em_progress_bar:
+            em_progress_bar.set_description("Applying error mitigation [%d][%d]" %(i, j))
+            if i != j:
+                gram_matrix[i][j] = gram_matrix[i][j] / np.sqrt(gram_matrix[i][i] * gram_matrix[j][j])
+            else:
+                continue
+        for i in range(gram_matrix.shape[0]):
+            gram_matrix[i][i] = 1
+    else:
+        for i, j in em_progress_bar:
+            em_progress_bar.set_description("Applying error mitigation [%d][%d]" %(i, j))
+            gram_matrix[i][j] = gram_matrix[i][j] / np.sqrt(X1_purities[i] * X2_purities[j])
     return gram_matrix
 
 def save_interim_kernel_copy(interimKernelCopy, kmethod, size, seed, n_pc, split=None, qIT_shots=None,\

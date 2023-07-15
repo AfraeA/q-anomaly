@@ -66,21 +66,22 @@ def preprocess_data(data, kmethod, seed, n_pc, train_split=False, pca_sc=None, p
         pca = PCA(n_components=n_pc, random_state=seed)
         features = pca.fit_transform(features)
         
-        if kmethod.startswith('q'):
-            features = features * 0.1
-        elif kmethod == "qRM":
+        if kmethod == "qRM":
             sc = StandardScaler()
             features = sc.fit_transform(features) / np.sqrt(n_pc)
+        elif kmethod.startswith('q'):
+            features = features * 0.1
             
     else:
         try:
             features = pca_sc.transform(features)
             features = pca.transform(features)
             
-            if kmethod.startswith('q'):
-                features = features * 0.1
-            elif kmethod == "qRM":
+            if kmethod == "qRM":
                 features = sc.transform(features) / np.sqrt(n_pc)
+            elif kmethod.startswith('q'):
+                features = features * 0.1
+
         except:
             print('PCA or Scalers not available')
     return features, labels, pca_sc, pca, sc
