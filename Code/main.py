@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 
 from Preprocessing import import_data, split_dataset, preprocess_data
-from Training import train_model, save_model
+from Training import train_model, save_model, retrieve_model
 from Testing import test_model, save_results, check_tested
 
 parser = argparse.ArgumentParser(description='Processing experiment specification.')
@@ -38,17 +38,17 @@ if not check_tested(args.kmethod, args.seed, args.train_size, args.n_pc, args.qI
     assert X_train.shape[1] == args.n_pc and X_test.shape[1] == args.n_pc, "Dataset was preprocessed incorrectly"
 
     # Training and collecting metrics on test set
-    ocsvm, train_time = train_model(X_train, y_train, seed=args.seed, kmethod=args.kmethod, qIT_shots=args.qIT_shots, \
+    model, train_time = train_model(X_train, y_train, seed=args.seed, kmethod=args.kmethod, qIT_shots=args.qIT_shots, \
                     qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings, \
                     qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
 
     # Saving the model
-    save_model(ocsvm, args.kmethod, args.seed, args.train_size, args.n_pc, qIT_shots=args.qIT_shots, \
+    save_model(model, args.kmethod, args.seed, args.train_size, args.n_pc, qIT_shots=args.qIT_shots, \
                     qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings,  \
                     qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
 
     # Gathering metrics
-    avgPrecision, precision, recall, f1_score, auroc, test_time = test_model(ocsvm, X_test, y_test, seed=args.seed, \
+    avgPrecision, precision, recall, f1_score, auroc, test_time = test_model(model, X_test, y_test, seed=args.seed, \
                     kmethod=args.kmethod, qIT_shots=args.qIT_shots, qRM_shots=args.qRM_shots, \
                     qRM_settings=args.qRM_settings, qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
 

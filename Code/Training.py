@@ -108,8 +108,7 @@ def retrieve_model(kmethod, seed, size, n_pc, qIT_shots=None, \
                 if os.path.exists(modelFileName):
                     ocsvm = load(modelFileName)
                     model.append(ocsvm)
-        return model
+            return model
     modelFileName += f'.joblib'
-    model = load(modelFileName, modelFileName) if os.path.exists(modelFileName) else None
-    return model     
-        
+    model = load(modelFileName) if os.path.exists(modelFileName) else None
+    return model 

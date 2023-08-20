@@ -6,8 +6,8 @@ import pandas as pd
 from tqdm import tqdm, trange
 from itertools import product, chain
 
-from functools import partialmethod
-tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+#from functools import partialmethod
+#tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
 from qiskit import QuantumRegister, QuantumCircuit, ClassicalRegister, transpile
 from qiskit.providers.aer import QasmSimulator
@@ -198,21 +198,32 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     '''
     X1_size, X2_size, n_pc = len(X1), len(X2), len(X1[0])
     split = 'train' if np.array_equal(X1,X2) else 'test'
-    # Retrive old kernel copy and return it if it is complete
+    # Retrieve old kernel copy and return it if it is complete
+    qRM_settings_list = get_qRM_settings_list(seed, n_pc, n_settings)
     gram_matrix = retrieve_interim_kernel_copy('qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     if gram_matrix is not None and is_kernel_complete('qRM', (X1_size, X2_size), split, seed, n_pc, n_shots, n_settings):
+        return gram_matrix
+    elif gram_matrix is not None and (gram_matrix[-1, -1] != 0 and (gram_matrix[-1, 1] != 1)): # if gram_matrix exists and it is complete without mitigation
+        start_t = time.time()
+        X1_measurements = get_dataset_randomized_measurements(X1, 1, seed, qRM_settings_list, n_shots, split)
+        X2_measurements = get_dataset_randomized_measurements(X2, 2, seed, qRM_settings_list, n_shots, split) if split == 'test' else X1_measurements
+        X1_purities = [combine_randomized_measurements(x,x) for x in X1_measurements] if split=='test' else None
+        X2_purities = [combine_randomized_measurements(x,x) for x in X2_measurements] if split=='test' else None
+        gram_matrix = apply_mitigation(gram_matrix, split, X1_purities=X1_purities, X2_purities=X2_purities)
+        if split=='train':
+            gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
+        save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
+        end_t = time.time()
+        save_interim_kernel_calculation_time(end_t-start_t, True, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
         return gram_matrix
     start_t = time.time()
     qRM_settings_list = get_qRM_settings_list(seed, n_pc, n_settings)
     end_t = time.time()
     save_interim_kernel_calculation_time(end_t-start_t, False, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
     # Measure and save the datasets' measurements using randomized measurements, the time for the calculation is saved from within the function
-    X1_measurements = get_dataset_randomized_measurements(X1, 1, seed, qRM_settings_list, n_shots, split)
-    if split == 'test':
-        X2_measurements = get_dataset_randomized_measurements(X2, 2, seed, qRM_settings_list, n_shots, split)
-    else:
-        X2_measurements = X1_measurements
     start_t = time.time()
+    X1_measurements = get_dataset_randomized_measurements(X1, 1, seed, qRM_settings_list, n_shots, split)
+    X2_measurements = get_dataset_randomized_measurements(X2, 2, seed, qRM_settings_list, n_shots, split) if split == 'test' else X1_measurements
     if gram_matrix is None:
         gram_matrix = np.zeros((X1_size,X2_size))
         num_eval = X1_size*X2_size
@@ -238,14 +249,18 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
         else:
             continue
     # Apply mitigation and save the final kernel copy as well as its calculation time
-    start_t = time.time() 
-    #gram_matrix = apply_mitigation(gram_matrix)
+    start_t = time.time()
+    X1_purities = [combine_randomized_measurements(x,x) for x in X1_measurements] if split=='test' else None
+    X2_purities = [combine_randomized_measurements(x,x) for x in X2_measurements] if split=='test' else None
+    gram_matrix = apply_mitigation(gram_matrix, split, X1_purities=X1_purities, X2_purities=X2_purities)
     if split=='train':
         gram_matrix = gram_matrix + gram_matrix.T - np.diag(np.diag(gram_matrix))
     save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     end_t = time.time()
     save_interim_kernel_calculation_time(end_t - start_t, True, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
+    print(gram_matrix)
     return gram_matrix
+
 
 def get_exponential_hamming_matrix(A,B):
     '''
