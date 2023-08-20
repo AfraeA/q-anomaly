@@ -17,7 +17,8 @@ def get_qVS_predictions(model, X_test):
 def test_model(model, X_test, y_test, seed, kmethod, qIT_shots=None, \
                 qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     print('Gathering performance metrics...')
-    previous_t = retrieve_interim_kernel_calculation_time(kmethod, len(X_test), 'test', seed, len(X_test[0]), \
+    train_size = model.shape_fit_[0] if kmethod != 'qVS' else None
+    previous_t = retrieve_interim_kernel_calculation_time(kmethod, (len(X_test), train_size), 'test', seed, len(X_test[0]), \
                                     qIT_shots=qIT_shots, qRM_shots=qRM_shots, qRM_settings=qRM_settings, \
                                     qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     start_test_time = time.time()

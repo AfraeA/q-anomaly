@@ -32,7 +32,7 @@ def train_model(X_train, y_train, seed, kmethod, qIT_shots, qRM_shots, qRM_setti
     elif kmethod == 'qRM':
         get_kernel_matrix = partial(get_kernel_matrix_qRM, seed=seed, n_shots=qRM_shots, n_settings=qRM_settings)
         model = OneClassSVM(kernel=get_kernel_matrix, nu=0.1, cache_size=2000)
-    previous_t = retrieve_interim_kernel_calculation_time(kmethod, len(X_train), 'train', seed, len(X_train[0]), \
+    previous_t = retrieve_interim_kernel_calculation_time(kmethod, (len(X_train), len(X_train)), 'train', seed, len(X_train[0]), \
                                     qIT_shots=qIT_shots, qRM_shots=qRM_shots, qRM_settings=qRM_settings, \
                                     qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     start_train_time = time.time()
