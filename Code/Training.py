@@ -32,7 +32,7 @@ def train_model(X_train, y_train, seed, kmethod, qIT_shots, qRM_shots, qRM_setti
     elif kmethod == 'qRM':
         get_kernel_matrix = partial(get_kernel_matrix_qRM, seed=seed, n_shots=qRM_shots, n_settings=qRM_settings)
         model = OneClassSVM(kernel=get_kernel_matrix, nu=0.1, cache_size=2000)
-    previous_t = retrieve_interim_kernel_calculation_time(kmethod, (len(X_train), len(X_train)), 'train', seed, len(X_train[0]), \
+    previous_t = retrieve_interim_kernel_calculation_time(kmethod, (len(X_train),len(X_train)), 'train', seed, len(X_train[0]), \
                                     qIT_shots=qIT_shots, qRM_shots=qRM_shots, qRM_settings=qRM_settings, \
                                     qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     start_train_time = time.time()
@@ -84,6 +84,9 @@ def retrieve_model(kmethod, seed, size, n_pc, qIT_shots=None, \
     '''
     Retrieves trained model from models directory for further testing
     '''
+    train_time = retrieve_interim_kernel_calculation_time(kmethod, (size,size), 'train', seed, n_pc, \
+                                    qIT_shots=qIT_shots, qRM_shots=qRM_shots, qRM_settings=qRM_settings, \
+                                    qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     print('Retrieving model...')
     modelsFolderName = f'./Models/'
     if not os.path.exists(modelsFolderName):
@@ -108,7 +111,7 @@ def retrieve_model(kmethod, seed, size, n_pc, qIT_shots=None, \
                 if os.path.exists(modelFileName):
                     ocsvm = load(modelFileName)
                     model.append(ocsvm)
-            return model
+        return model[0], train_time
     modelFileName += f'.joblib'
     model = load(modelFileName) if os.path.exists(modelFileName) else None
-    return model 
+    return model, train_time

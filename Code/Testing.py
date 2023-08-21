@@ -11,30 +11,35 @@ def get_qVS_predictions(model, X_test):
      # We get the decision function for datapoint in the test set using all the components
     predictions_per_component = np.vstack([component.decision_function(X_test) for component in model])
     # We normalise the outlier scores and average them, then extract the label using the sign function
-    predictions = np.sign(((predictions_per_component - predictions_per_component.mean())/predictions_per_component.std()).max(axis=0))
-    return predictions
+    scores = ((predictions_per_component - predictions_per_component.mean())/predictions_per_component.std()).max(axis=0)
+    predictions = np.sign(scores)
+    return scores, predictions
 
 def test_model(model, X_test, y_test, seed, kmethod, qIT_shots=None, \
                 qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
     print('Gathering performance metrics...')
-    train_size = model.shape_fit_[0] if kmethod != 'qVS' else None
-    previous_t = retrieve_interim_kernel_calculation_time(kmethod, (len(X_test), train_size), 'test', seed, len(X_test[0]), \
+    if kmethod != 'qVS':
+        train_size = model.shape_fit_[0]
+    else:
+        train_size = None
+    previous_t = retrieve_interim_kernel_calculation_time(kmethod, (len(X_test),train_size), 'test', seed, len(X_test[0]), \
                                     qIT_shots=qIT_shots, qRM_shots=qRM_shots, qRM_settings=qRM_settings, \
                                     qVS_subsamples=qVS_subsamples, qVS_maxsize=qVS_maxsize)
     start_test_time = time.time()
     if kmethod == 'qVS':
-       predictions = get_qVS_predictions(model, X_test)
+       scores, predictions = get_qVS_predictions(model, X_test)
     else:
-        predictions = model.predict(X_test)
+        scores = model.decision_function(X_test)
+        predictions = np.sign(scores)
     end_test_time = time.time()
     testDuration = end_test_time - start_test_time + previous_t
     
     predictions = pd.Series(predictions).replace([-1,1],[1,0])
-    avgPrecision = average_precision_score(y_test, predictions)
+    avgPrecision = average_precision_score(y_test, scores)
     recall = recall_score(y_test, predictions)
     precision = precision_score(y_test, predictions)
     f1score = f1_score(y_test, predictions)
-    auroc = roc_auc_score(y_test, predictions)
+    auroc = roc_auc_score(y_test, scores)
     
     return avgPrecision, precision, recall, f1score, auroc, testDuration
 
@@ -63,7 +68,7 @@ def save_results(kmethod, seed, size, n_pc, avgPrecision, precision, \
     with open(resultFileName, 'a+') as resultFile:
         resultFormat = '{0},{1},{2:.4f},{3:.4f},{4:.4f},{5:.4f},{6:.4f},{7:.4f},{8:.4f}\n'
         resultFile.write(resultFormat.format(seed, n_pc, avgPrecision, precision, \
-                                             recall, f1_score, auroc, train_time, test_time))
+                                             recall, f1_score, auroc, float(train_time), float(test_time)))
         
 def check_tested(kmethod, seed, size, n_pc, qIT_shots=None, \
                 qRM_shots=None, qRM_settings=None, qVS_subsamples=None, qVS_maxsize=None):
