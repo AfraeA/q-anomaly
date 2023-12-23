@@ -1,13 +1,13 @@
 #!/bin/zsh
 
 # Specify hyperparameters
-runs=5
-methods=("qIT")
-pcs=6
+runs=15
+methods=("cRBF" "qIT" "qRM" "qVS")
+pcs=20
 qIT_shots=1000
 qRM_shots=9000
 qRM_settings=30
-qVS_subsamples=15
+qVS_subsamples=5
 qVS_maxsize=100
 
 # Check if sbatch is available

@@ -258,7 +258,6 @@ def get_kernel_matrix_qRM(X1, X2, seed=None, n_settings=8, n_shots=8000):
     save_interim_kernel_copy(gram_matrix, 'qRM', (X1_size, X2_size), seed, n_pc, split=split, qRM_shots=n_shots, qRM_settings=n_settings)
     end_t = time.time()
     save_interim_kernel_calculation_time(end_t - start_t, True, 'qRM', (X1_size, X2_size), split, seed, n_pc, qRM_shots=n_shots, qRM_settings=n_settings)
-    print(gram_matrix)
     return gram_matrix
 
 

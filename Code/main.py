@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='Processing experiment specificatio
 parser.add_argument('--kmethod', choices=["cRBF", "qIT", "qRM", "qVS", "qBBF"], required=True, help='Method to calculate the kernel matrix.')
 parser.add_argument('--n_pc', type=int, required=True, help='Number of principal components or qubits.')
 parser.add_argument('--seed', type=int, required=True, help='Seed value to initialize random number generation.')
-parser.add_argument('--train_size', type=int, default=1250, help='Size of the training dataset sample.')
+parser.add_argument('--train_size', type=int, default=500, help='Size of the training dataset sample.')
 parser.add_argument('--test_size', type=int, default=125, help='Size of the testing dataset sample.')
 parser.add_argument('--anomaly_ratio', type=float, default=0.05, help='Ratio of anomalies in the testing dataset.')
 parser.add_argument('--qIT_shots', default=1000, type=int, help='Number of shots when measuring the quantum inversion test circuit.')
@@ -38,20 +38,24 @@ if not check_tested(args.kmethod, args.seed, args.train_size, args.n_pc, args.qI
     assert X_train.shape[1] == args.n_pc and X_test.shape[1] == args.n_pc, "Dataset was preprocessed incorrectly"
 
     # Training and collecting metrics on test set
-    model, train_time = train_model(X_train, y_train, seed=args.seed, kmethod=args.kmethod, qIT_shots=args.qIT_shots, \
-                    qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings, \
-                    qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
-
-    # Saving the model
-    save_model(model, args.kmethod, args.seed, args.train_size, args.n_pc, qIT_shots=args.qIT_shots, \
-                    qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings,  \
-                    qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
+    model, train_time = retrieve_model(args.kmethod, args.seed, args.train_size, args.n_pc, qIT_shots=None, \
+                qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings, \
+                qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
+    if model is None or model == []:
+        # Training and collecting metrics on test set
+        model, train_time = train_model(X_train, y_train, seed=args.seed, kmethod=args.kmethod, qIT_shots=args.qIT_shots, \
+                        qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings, \
+                        qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
+        # Saving the model
+        save_model(model, args.kmethod, args.seed, args.train_size, args.n_pc, qIT_shots=args.qIT_shots, \
+                        qRM_shots=args.qRM_shots, qRM_settings=args.qRM_settings,  \
+                        qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
 
     # Gathering metrics
     avgPrecision, precision, recall, f1_score, auroc, test_time = test_model(model, X_test, y_test, seed=args.seed, \
                     kmethod=args.kmethod, qIT_shots=args.qIT_shots, qRM_shots=args.qRM_shots, \
                     qRM_settings=args.qRM_settings, qVS_subsamples=args.qVS_subsamples, qVS_maxsize=args.qVS_maxsize)
-
+    
     # Saving the results of model
     save_results(args.kmethod, args.seed, args.train_size, args.n_pc, \
                     avgPrecision, precision, recall, f1_score, \
